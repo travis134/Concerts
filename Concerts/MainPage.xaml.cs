@@ -1,141 +1,250 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using Microsoft.Phone.Controls;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Shapes;
-using Microsoft.Phone.Controls;
+using System.Collections.Generic;
+using System.Net;
+using System;
 using System.Xml;
-using System.ServiceModel.Syndication;
-using System.IO;
-using System.Windows.Media.Imaging;
-using System.Threading;
-using System.ComponentModel;
 using Microsoft.Phone.Tasks;
+using System.Windows.Controls;
+using System.Linq;
+using System.Device.Location;
 
 namespace Concerts
 {
     public partial class MainPage : PhoneApplicationPage
     {
-        // Constructor
-        List<Concert> concerts;
-        Thread imageLoader;
-        List<BitmapImage> images;
-        int imageIndex;
+        List<Event> events;
+        List<Artist> artists;
+        List<Venue> venues;
+        GeoCoordinateWatcher watcher;
 
         public MainPage()
         {
             InitializeComponent();
-
-            // Set the data context of the listbox control to the sample data
-            DataContext = App.ViewModel;
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
         }
 
-        // Load data for the ViewModel Items
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            if (!App.ViewModel.IsDataLoaded)
+            events = new List<Event>();
+            artists = new List<Artist>();
+            venues = new List<Venue>();
+
+            
+            if (watcher == null)
             {
-                App.ViewModel.LoadData();
+                watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.High);
+                watcher.MovementThreshold = 20;
+                watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
             }
+            watcher.Start();
+        }
 
-            concerts = new List<Concert>();
-            images = new List<BitmapImage>();
-
-            System.Windows.Deployment.Current.Dispatcher.BeginInvoke(() =>
+        void watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
+        {
+            switch (e.Status)
             {
-                for (int i = 0; i < 20; i++)
+                case GeoPositionStatus.Disabled:
+                    if (watcher.Permission == GeoPositionPermission.Denied)
+                    {
+                        System.Diagnostics.Debug.WriteLine("you have this application access to location.");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("location is not functioning on this device");
+                    }
+                    break;
+
+                case GeoPositionStatus.Initializing:
+                    System.Diagnostics.Debug.WriteLine("starting");
+                    break;
+
+                case GeoPositionStatus.NoData:
+                    System.Diagnostics.Debug.WriteLine("no data");
+                    break;
+
+                case GeoPositionStatus.Ready:
+                    System.Diagnostics.Debug.WriteLine("ready");
+                    WebClient eventsClient = new WebClient();
+                    eventsClient.OpenReadAsync(new Uri("http://api.bandsintown.com/events/search.xml?location=" + watcher.Position.Location.Latitude.ToString() + "," + watcher.Position.Location.Longitude.ToString() + "&app_id=concerts_wp7"));
+                    eventsClient.OpenReadCompleted += new OpenReadCompletedEventHandler(request_DownloadConcertInfo);
+                    break;
+            }
+        }
+
+        public List<Event> parseEvents(XmlReader eventsReader)
+        {
+            List<Event> events = new List<Event>();
+            while (eventsReader.Read())
+            {
+                if (eventsReader.NodeType == XmlNodeType.Element)
                 {
-                    RowDefinition Row = new RowDefinition();
-                    Row.Height = new GridLength(0, GridUnitType.Auto);
-                    ImageGrid.RowDefinitions.Add(Row);
-
-                    RowDefinition Padding = new RowDefinition();
-                    Padding.Height = new GridLength(20);
-                    ImageGrid.RowDefinitions.Add(Padding);
+                    switch (eventsReader.Name)
+                    {
+                        case "artists":
+                            System.Diagnostics.Debug.WriteLine("At root: artists");
+                            XmlReader artistsReader = eventsReader.ReadSubtree();
+                            events.Last<Event>().Artists = parseArtists(artistsReader);
+                            events.Last<Event>().ArtistName = events.Last<Event>().Artists.First<Artist>().Name;
+                            break;
+                        case "venue":
+                            System.Diagnostics.Debug.WriteLine("At root: venue");
+                            XmlReader venueReader = eventsReader.ReadSubtree();
+                            events.Last<Event>().Venue = parseVenue(venueReader);
+                            events.Last<Event>().VenueName = events.Last<Event>().Venue.Name;
+                            break;
+                        case "events":
+                            System.Diagnostics.Debug.WriteLine("At root: events");
+                            break;
+                        case "event":
+                            System.Diagnostics.Debug.WriteLine("Found new event");
+                            events.Add(new Event());
+                            break;
+                        case "id":
+                            events.Last<Event>().Id = eventsReader.ReadElementContentAsInt();
+                            System.Diagnostics.Debug.WriteLine("Found id:" + events.Last<Event>().Id.ToString());
+                            break;
+                        case "url":
+                            events.Last<Event>().Url = eventsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found url:" + events.Last<Event>().Url.ToString());
+                            break;
+                        case "datetime":
+                            events.Last<Event>().DateTime = eventsReader.ReadElementContentAsDateTime();
+                            System.Diagnostics.Debug.WriteLine("Found datetime:" + events.Last<Event>().DateTime.ToString());
+                            break;
+                        case "ticket_url":
+                            events.Last<Event>().Ticket_Url = eventsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found ticket_url:" + events.Last<Event>().Ticket_Url.ToString());
+                            break;
+                        case "status":
+                            events.Last<Event>().Status = eventsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found status:" + events.Last<Event>().Status.ToString());
+                            break;
+                        case "ticket_status":
+                            events.Last<Event>().Ticket_Status = eventsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found ticket_status:" + events.Last<Event>().Ticket_Status.ToString());
+                            break;
+                        case "on_sale_datetime":
+                            events.Last<Event>().On_Sale_Date = ParseNullableDateTime(eventsReader.ReadInnerXml().ToString());
+                            System.Diagnostics.Debug.WriteLine("Found one_sale_datetime:" + events.Last<Event>().On_Sale_Date.ToString());
+                            break;
+                    }
                 }
-            });
-
-            try
-            {
-                WebClient infoClient = new WebClient();
-                infoClient.DownloadStringAsync(new Uri("http://www.tourfilter.com/newyork/rss/by_concert_date"));
-                infoClient.DownloadStringCompleted += new DownloadStringCompletedEventHandler(request_DownloadConcertInfo);
-
-                
             }
-            catch (WebException we)
-            {
-                System.Diagnostics.Debug.WriteLine("Error: \n " + we.Message);
-            }
+            return events;
+        }
 
+        public List<Artist> parseArtists(XmlReader artistsReader)
+        {
+            List<Artist> artists = new List<Artist>();
+            while (artistsReader.Read())
+            {
+                if (artistsReader.NodeType == XmlNodeType.Element)
+                {
+                    switch (artistsReader.Name)
+                    {
+                        case "artist":
+                            System.Diagnostics.Debug.WriteLine("Found new artist");
+                            artists.Add(new Artist());
+                            break;
+                        case "name":
+                            artists.Last<Artist>().Name = artistsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found artist name:" + artists.Last<Artist>().Name.ToString());
+                            break;
+                        case "url":
+                            artists.Last<Artist>().Url = artistsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found artist url:" + artists.Last<Artist>().Url.ToString());
+                            break;
+                        case "mbid":
+                            artists.Last<Artist>().Mbid = artistsReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found artist mbid:" + artists.Last<Artist>().Mbid.ToString());
+                            break;
+                        case "upcoming_events_count":
+                            artists.Last<Artist>().Upcoming_Events_Count = artistsReader.ReadElementContentAsInt();
+                            System.Diagnostics.Debug.WriteLine("Found artist upcoming_events_count:" + artists.Last<Artist>().Mbid.ToString());
+                            break;
+                    }
+                }
+            }
+            return artists;
+        }
+
+        public Venue parseVenue(XmlReader venueReader)
+        {
+            Venue venue = new Venue();
+            while (venueReader.Read())
+            {
+                if (venueReader.NodeType == XmlNodeType.Element)
+                {
+                    switch (venueReader.Name)
+                    {
+                        case "id":
+                            venue.Id = venueReader.ReadElementContentAsInt();
+                            System.Diagnostics.Debug.WriteLine("Found avenue id:" + venue.Id.ToString());
+                            break;
+                        case "name":
+                            venue.Name = venueReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found avenue name:" + venue.Name.ToString());
+                            break;
+                        case "url":
+                            venue.Url = venueReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found avenue url:" + venue.Url.ToString());
+                            break;
+                        case "city":
+                            venue.City = venueReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found avenue city:" + venue.City.ToString());
+                            break;
+                        case "region":
+                            venue.Region = venueReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found avenue region:" + venue.Region.ToString());
+                            break;
+                        case "country":
+                            venue.Country = venueReader.ReadElementContentAsString();
+                            System.Diagnostics.Debug.WriteLine("Found avenue country:" + venue.Country.ToString());
+                            break;
+                        case "latitude":
+                            venue.Latitude = venueReader.ReadElementContentAsFloat();
+                            System.Diagnostics.Debug.WriteLine("Found avenue latitude:" + venue.Latitude.ToString());
+                            break;
+                        case "longitude":
+                            venue.Longitude = venueReader.ReadElementContentAsFloat();
+                            System.Diagnostics.Debug.WriteLine("Found avenue longitude:" + venue.Longitude.ToString());
+                            break;
+                    }
+                }
+            }
+            return venue;
         }
 
         void request_DownloadConcertInfo(object sender,
-            DownloadStringCompletedEventArgs e)
+            OpenReadCompletedEventArgs e)
         {
-            XmlReader reader = XmlReader.Create(new StringReader(e.Result));
-            SyndicationFeed feed = SyndicationFeed.Load(reader);
-            concerts.Clear();
-            
-            foreach (SyndicationItem si in feed.Items)
+            XmlReader eventsReader = XmlReader.Create(e.Result);
+            this.events = this.parseEvents(eventsReader);
+            foreach(Event tempEvent in this.events)
             {
-                concerts.Add(new Concert(si.Title.Text.ToString(), si.Links[0].Uri));
-            }
-            ConcertInfoList.ItemsSource = concerts;
-
-            imageLoader = new Thread(new ThreadStart(imageLoaderThread));
-            imageLoader.Start();
-        }
-
-        void imageLoaderThread()
-        {
-            for (int i = 0; i<concerts.Count; i++)
-            {
-                WebClient imageClient = new WebClient();
-                imageClient.DownloadStringAsync(new Uri("http://www.degraeve.com/flickr-rss/rss.php?tags=" + concerts[i].Band + " concert&tagmode=all&sort=interestingness-desc&num=1"));
-                imageClient.DownloadStringCompleted += new DownloadStringCompletedEventHandler(request_DownloadConcertImages);
+                ConcertInfoList.Items.Add(tempEvent);
             }
         }
-
-        void request_DownloadConcertImages(object sender,
-            DownloadStringCompletedEventArgs e)
-        {
-            XmlReader reader = XmlReader.Create(new StringReader(e.Result));
-            SyndicationFeed feed = SyndicationFeed.Load(reader);
-
-            foreach (SyndicationItem si in feed.Items)
-            {
-                if (images.Count >= 20)
-                {
-                    break;
-                }
-                //images.Add(new BitmapImage(new Uri(si.Id.ToString())));
-                System.Windows.Deployment.Current.Dispatcher.BeginInvoke(() =>
-                {
-                    Image image = new Image() { Source = new BitmapImage(new Uri(si.Id.ToString())) };
-                    image.Stretch = Stretch.UniformToFill;
-                    Grid.SetRow(image, imageIndex * 2);
-                    ImageGrid.Children.Add(image);
-                });
-                imageIndex++;
-            }
-        }
-
        
         private void ConcertInfoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WebBrowserTask task = new WebBrowserTask();
-            task.URL = concerts[ConcertInfoList.SelectedIndex].Link.ToString();
+            task.URL = events[ConcertInfoList.SelectedIndex].Ticket_Url;
             task.Show();
         }
 
+        public static DateTime? ParseNullableDateTime(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+            {
+                return null;
+            }
+            else
+            {
+                return DateTime.Parse(s);
+            }
+        }
 
     }
 }

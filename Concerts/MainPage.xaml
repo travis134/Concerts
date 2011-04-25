@@ -30,11 +30,11 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,0,0,17" Width="432" Orientation="Vertical">
-                                <TextBlock FontSize="72" Text="{Binding Band}" TextWrapping="Wrap" />
+                                <TextBlock FontSize="72" Text="{Binding ArtistName}" TextWrapping="Wrap" />
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock FontSize="24" Text="{Binding DateString}" TextWrapping="Wrap"/>
+                                    <TextBlock FontSize="24" Text="{Binding DateTime}" TextWrapping="Wrap"/>
                                     <TextBlock FontSize="24" Text=" at " TextWrapping="Wrap"/>
-                                    <TextBlock FontSize="24" Text="{Binding Location}" TextWrapping="Wrap"/>
+                                    <TextBlock FontSize="24" Text="{Binding VenueName}" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
