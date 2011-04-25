@@ -8,6 +8,8 @@ using Microsoft.Phone.Tasks;
 using System.Windows.Controls;
 using System.Linq;
 using System.Device.Location;
+using System.Windows.Markup;
+using Microsoft.Advertising.Mobile.UI;
 
 namespace Concerts
 {
@@ -17,220 +19,366 @@ namespace Concerts
         List<Artist> artists;
         List<Venue> venues;
         GeoCoordinateWatcher watcher;
+        StorageHelper<Event> eventsStorageHelper;
+        StorageHelper<Artist> artistsStorageHelper;
+        StorageHelper<Venue> venuesStorageHelper;
+
 
         public MainPage()
         {
             InitializeComponent();
+            PanoramaItem eventsPage = new PanoramaItem() { Name = "eventsPage", Header = "Upcoming" };
+            PanoramaItem artistsPage = new PanoramaItem() { Name = "artistsPage", Header = "Artists" };
+            PanoramaItem venuesPage = new PanoramaItem() { Name = "venuesPage", Header = "Venues" };
+            mainView.Items.Add(eventsPage);
+            mainView.Items.Add(artistsPage);
+            mainView.Items.Add(venuesPage);
+
+            events = new List<Event>();
+            artists = new List<Artist>();
+            venues = new List<Venue>();
+
+            eventsStorageHelper = new StorageHelper<Event>("Events.xml", "Stale.txt");
+            artistsStorageHelper = new StorageHelper<Artist>("Artists.xml");
+            venuesStorageHelper = new StorageHelper<Venue>("Venues.xml");
+
+            if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
+            {
+                if (watcher == null)
+                {
+                    watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.High);
+                    watcher.MovementThreshold = 20;
+                    watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
+                }
+                watcher.Start();
+            }
+            else
+            {
+                this.events = this.eventsStorageHelper.Load();
+                this.artists = this.artistsStorageHelper.Load();
+                this.venues = this.venuesStorageHelper.Load();
+                this.updateUi();
+            }
+
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
         }
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            events = new List<Event>();
-            artists = new List<Artist>();
-            venues = new List<Venue>();
-
             
-            if (watcher == null)
-            {
-                watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.High);
-                watcher.MovementThreshold = 20;
-                watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
-            }
-            watcher.Start();
         }
 
         void watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
+            Boolean deviceReady = false;
+            String url = "http://api.bandsintown.com/events/search.xml?per_page=20&location={0}&app_id=concerts_wp7";
             switch (e.Status)
             {
                 case GeoPositionStatus.Disabled:
-                    if (watcher.Permission == GeoPositionPermission.Denied)
-                    {
-                        System.Diagnostics.Debug.WriteLine("you have this application access to location.");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("location is not functioning on this device");
-                    }
                     break;
-
                 case GeoPositionStatus.Initializing:
-                    System.Diagnostics.Debug.WriteLine("starting");
                     break;
-
                 case GeoPositionStatus.NoData:
-                    System.Diagnostics.Debug.WriteLine("no data");
                     break;
-
                 case GeoPositionStatus.Ready:
-                    System.Diagnostics.Debug.WriteLine("ready");
-                    WebClient eventsClient = new WebClient();
-                    eventsClient.OpenReadAsync(new Uri("http://api.bandsintown.com/events/search.xml?location=" + watcher.Position.Location.Latitude.ToString() + "," + watcher.Position.Location.Longitude.ToString() + "&app_id=concerts_wp7"));
-                    eventsClient.OpenReadCompleted += new OpenReadCompletedEventHandler(request_DownloadConcertInfo);
+                    deviceReady = true;
+                    url = String.Format(url, watcher.Position.Location.Latitude.ToString() + "," + watcher.Position.Location.Longitude.ToString());
                     break;
             }
+
+            if (!deviceReady)
+            {
+                url = String.Format(url, "Tempe,AZ");
+            }
+            WebClient eventsClient = new WebClient();
+            eventsClient.OpenReadAsync(new Uri(url));
+            eventsClient.OpenReadCompleted += new OpenReadCompletedEventHandler(request_DownloadConcertInfo);
         }
 
         public List<Event> parseEvents(XmlReader eventsReader)
         {
-            List<Event> events = new List<Event>();
-            while (eventsReader.Read())
+            List<Event> eventsResult = new List<Event>();
+            try
             {
-                if (eventsReader.NodeType == XmlNodeType.Element)
+                while (eventsReader.Read())
                 {
-                    switch (eventsReader.Name)
+                    if (eventsReader.NodeType == XmlNodeType.Element)
                     {
-                        case "artists":
-                            System.Diagnostics.Debug.WriteLine("At root: artists");
-                            XmlReader artistsReader = eventsReader.ReadSubtree();
-                            events.Last<Event>().Artists = parseArtists(artistsReader);
-                            events.Last<Event>().ArtistName = events.Last<Event>().Artists.First<Artist>().Name;
-                            break;
-                        case "venue":
-                            System.Diagnostics.Debug.WriteLine("At root: venue");
-                            XmlReader venueReader = eventsReader.ReadSubtree();
-                            events.Last<Event>().Venue = parseVenue(venueReader);
-                            events.Last<Event>().VenueName = events.Last<Event>().Venue.Name;
-                            break;
-                        case "events":
-                            System.Diagnostics.Debug.WriteLine("At root: events");
-                            break;
-                        case "event":
-                            System.Diagnostics.Debug.WriteLine("Found new event");
-                            events.Add(new Event());
-                            break;
-                        case "id":
-                            events.Last<Event>().Id = eventsReader.ReadElementContentAsInt();
-                            System.Diagnostics.Debug.WriteLine("Found id:" + events.Last<Event>().Id.ToString());
-                            break;
-                        case "url":
-                            events.Last<Event>().Url = eventsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found url:" + events.Last<Event>().Url.ToString());
-                            break;
-                        case "datetime":
-                            events.Last<Event>().DateTime = eventsReader.ReadElementContentAsDateTime();
-                            System.Diagnostics.Debug.WriteLine("Found datetime:" + events.Last<Event>().DateTime.ToString());
-                            break;
-                        case "ticket_url":
-                            events.Last<Event>().Ticket_Url = eventsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found ticket_url:" + events.Last<Event>().Ticket_Url.ToString());
-                            break;
-                        case "status":
-                            events.Last<Event>().Status = eventsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found status:" + events.Last<Event>().Status.ToString());
-                            break;
-                        case "ticket_status":
-                            events.Last<Event>().Ticket_Status = eventsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found ticket_status:" + events.Last<Event>().Ticket_Status.ToString());
-                            break;
-                        case "on_sale_datetime":
-                            events.Last<Event>().On_Sale_Date = ParseNullableDateTime(eventsReader.ReadInnerXml().ToString());
-                            System.Diagnostics.Debug.WriteLine("Found one_sale_datetime:" + events.Last<Event>().On_Sale_Date.ToString());
-                            break;
+                        switch (eventsReader.Name)
+                        {
+                            case "artists":
+                                XmlReader artistsReader = eventsReader.ReadSubtree();
+                                eventsResult.Last<Event>().Artists = parseArtists(artistsReader);
+                                break;
+                            case "venue":
+                                XmlReader venueReader = eventsReader.ReadSubtree();
+                                eventsResult.Last<Event>().Venue = parseVenue(venueReader);
+                                break;
+                            case "events":
+                                break;
+                            case "event":
+                                eventsResult.Add(new Event());
+                                break;
+                            case "id":
+                                eventsResult.Last<Event>().Id = eventsReader.ReadElementContentAsInt();
+                                break;
+                            case "url":
+                                eventsResult.Last<Event>().Url = eventsReader.ReadElementContentAsString();
+                                break;
+                            case "datetime":
+                                eventsResult.Last<Event>().DateTime = eventsReader.ReadElementContentAsDateTime();
+                                break;
+                            case "ticket_url":
+                                eventsResult.Last<Event>().Ticket_Url = eventsReader.ReadElementContentAsString() + "?affil_code=concertswp7";
+                                break;
+                            case "status":
+                                eventsResult.Last<Event>().Status = eventsReader.ReadElementContentAsString();
+                                break;
+                            case "ticket_status":
+                                eventsResult.Last<Event>().Ticket_Status = eventsReader.ReadElementContentAsString();
+                                break;
+                            case "on_sale_datetime":
+                                eventsResult.Last<Event>().On_Sale_Date = ParseNullableDateTime(eventsReader.ReadInnerXml().ToString());
+                                break;
+                        }
                     }
                 }
             }
-            return events;
+            catch (Exception e)
+            {
+
+            }
+            return eventsResult;
         }
 
         public List<Artist> parseArtists(XmlReader artistsReader)
         {
-            List<Artist> artists = new List<Artist>();
-            while (artistsReader.Read())
+            List<Artist> artistsResults = new List<Artist>();
+            try
             {
-                if (artistsReader.NodeType == XmlNodeType.Element)
+                while (artistsReader.Read())
                 {
-                    switch (artistsReader.Name)
+                    if (artistsReader.NodeType == XmlNodeType.Element)
                     {
-                        case "artist":
-                            System.Diagnostics.Debug.WriteLine("Found new artist");
-                            artists.Add(new Artist());
-                            break;
-                        case "name":
-                            artists.Last<Artist>().Name = artistsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found artist name:" + artists.Last<Artist>().Name.ToString());
-                            break;
-                        case "url":
-                            artists.Last<Artist>().Url = artistsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found artist url:" + artists.Last<Artist>().Url.ToString());
-                            break;
-                        case "mbid":
-                            artists.Last<Artist>().Mbid = artistsReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found artist mbid:" + artists.Last<Artist>().Mbid.ToString());
-                            break;
-                        case "upcoming_events_count":
-                            artists.Last<Artist>().Upcoming_Events_Count = artistsReader.ReadElementContentAsInt();
-                            System.Diagnostics.Debug.WriteLine("Found artist upcoming_events_count:" + artists.Last<Artist>().Mbid.ToString());
-                            break;
+                        switch (artistsReader.Name)
+                        {
+                            case "artist":
+                                artistsResults.Add(new Artist());
+                                break;
+                            case "name":
+                                artistsResults.Last<Artist>().Name = artistsReader.ReadElementContentAsString();
+                                break;
+                            case "url":
+                                artistsResults.Last<Artist>().Url = artistsReader.ReadElementContentAsString();
+                                break;
+                            case "mbid":
+                                artistsResults.Last<Artist>().Mbid = artistsReader.ReadElementContentAsString();
+                                break;
+                            case "upcoming_events_count":
+                                artistsResults.Last<Artist>().Upcoming_Events_Count = artistsReader.ReadElementContentAsInt();
+                                break;
+                        }
                     }
                 }
             }
-            return artists;
+            catch (Exception e)
+            {
+
+            }
+            return artistsResults;
         }
 
         public Venue parseVenue(XmlReader venueReader)
         {
-            Venue venue = new Venue();
-            while (venueReader.Read())
+            Venue venueResult = new Venue();
+            try
             {
-                if (venueReader.NodeType == XmlNodeType.Element)
+                while (venueReader.Read())
                 {
-                    switch (venueReader.Name)
+                    if (venueReader.NodeType == XmlNodeType.Element)
                     {
-                        case "id":
-                            venue.Id = venueReader.ReadElementContentAsInt();
-                            System.Diagnostics.Debug.WriteLine("Found avenue id:" + venue.Id.ToString());
-                            break;
-                        case "name":
-                            venue.Name = venueReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found avenue name:" + venue.Name.ToString());
-                            break;
-                        case "url":
-                            venue.Url = venueReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found avenue url:" + venue.Url.ToString());
-                            break;
-                        case "city":
-                            venue.City = venueReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found avenue city:" + venue.City.ToString());
-                            break;
-                        case "region":
-                            venue.Region = venueReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found avenue region:" + venue.Region.ToString());
-                            break;
-                        case "country":
-                            venue.Country = venueReader.ReadElementContentAsString();
-                            System.Diagnostics.Debug.WriteLine("Found avenue country:" + venue.Country.ToString());
-                            break;
-                        case "latitude":
-                            venue.Latitude = venueReader.ReadElementContentAsFloat();
-                            System.Diagnostics.Debug.WriteLine("Found avenue latitude:" + venue.Latitude.ToString());
-                            break;
-                        case "longitude":
-                            venue.Longitude = venueReader.ReadElementContentAsFloat();
-                            System.Diagnostics.Debug.WriteLine("Found avenue longitude:" + venue.Longitude.ToString());
-                            break;
+                        switch (venueReader.Name)
+                        {
+                            case "id":
+                                venueResult.Id = venueReader.ReadElementContentAsInt();
+                                break;
+                            case "name":
+                                venueResult.Name = venueReader.ReadElementContentAsString();
+                                break;
+                            case "url":
+                                venueResult.Url = venueReader.ReadElementContentAsString();
+                                break;
+                            case "city":
+                                venueResult.City = venueReader.ReadElementContentAsString();
+                                break;
+                            case "region":
+                                venueResult.Region = venueReader.ReadElementContentAsString();
+                                break;
+                            case "country":
+                                venueResult.Country = venueReader.ReadElementContentAsString();
+                                break;
+                            case "latitude":
+                                venueResult.Latitude = venueReader.ReadElementContentAsFloat();
+                                break;
+                            case "longitude":
+                                venueResult.Longitude = venueReader.ReadElementContentAsFloat();
+                                break;
+                        }
                     }
                 }
             }
-            return venue;
+            catch (Exception e)
+            {
+
+            }
+            return venueResult;
+        }
+
+        private void updateUi()
+        {
+            DataTemplate eventsListItemTemplate = (DataTemplate)XamlReader.Load(
+                "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
+                + "<StackPanel Orientation=\"Vertical\">"
+                + "<TextBlock Text=\"{Binding ArtistName}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
+                + "<StackPanel Orientation=\"Horizontal\">"
+                + "<TextBlock Text=\"{Binding EventDate}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "<TextBlock Text=\" at \" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "<TextBlock Text=\"{Binding Venue.Name}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "</StackPanel>"
+                + "</StackPanel>"
+                + "</DataTemplate>");
+
+            ListBox eventsListBox = new ListBox() { Name = "eventsListBox", ItemTemplate = eventsListItemTemplate };
+            eventsListBox.Items.Clear();
+            foreach (Event tempEvent in this.events)
+            {
+                eventsListBox.Items.Add(tempEvent);
+            }
+
+            eventsListBox.SelectionChanged += new SelectionChangedEventHandler(eventsListBox_SelectionChanged);
+
+            DataTemplate artistsListItemTemplate = (DataTemplate)XamlReader.Load(
+                "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
+                + "<TextBlock Text=\"{Binding Name}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
+                + "</DataTemplate>");
+
+            ListBox artistsListBox = new ListBox() { Name = "artistsListBox", ItemTemplate = artistsListItemTemplate };
+            artistsListBox.Items.Clear();
+            foreach (Artist tempArtist in this.artists)
+            {
+                artistsListBox.Items.Add(tempArtist);
+            }
+
+            artistsListBox.SelectionChanged += new SelectionChangedEventHandler(artistsListBox_SelectionChanged);
+
+            DataTemplate venuesListItemTemplate = (DataTemplate)XamlReader.Load(
+                "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
+                + "<StackPanel Orientation=\"Vertical\">"
+                + "<TextBlock Text=\"{Binding Name}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
+                + "<StackPanel Orientation=\"Horizontal\">"
+                + "<TextBlock Text=\"{Binding City}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "<TextBlock Text=\", \" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "<TextBlock Text=\"{Binding Region}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
+                + "</StackPanel>"
+                + "</StackPanel>"
+                + "</DataTemplate>");
+
+            ListBox venuesListBox = new ListBox() { Name = "venuesListBox", ItemTemplate = venuesListItemTemplate };
+            venuesListBox.Items.Clear();
+            foreach (Venue tempVenue in this.venues)
+            {
+                venuesListBox.Items.Add(tempVenue);
+            }
+            
+
+            venuesListBox.SelectionChanged += new SelectionChangedEventHandler(venuesListBox_SelectionChanged);
+
+            PanoramaItem eventsPage = (PanoramaItem)this.FindName("eventsPage");
+            PanoramaItem artistsPage = (PanoramaItem)this.FindName("artistsPage");
+            PanoramaItem venuesPage = (PanoramaItem)this.FindName("venuesPage");
+
+            eventsPage.Content = eventsListBox;
+            artistsPage.Content = artistsListBox;
+            venuesPage.Content = venuesListBox;
+
+            AdControl concertsAd = new AdControl() { ApplicationId = "33c7fa47-c859-47f1-8903-f745bf749ce0", AdUnitId = "10016302", Width = 300, Height = 50, Margin = new Thickness(10) };
+            LayoutRoot.Children.Add(concertsAd);
+            Grid.SetRow(concertsAd, 1);
         }
 
         void request_DownloadConcertInfo(object sender,
             OpenReadCompletedEventArgs e)
         {
-            XmlReader eventsReader = XmlReader.Create(e.Result);
-            this.events = this.parseEvents(eventsReader);
-            foreach(Event tempEvent in this.events)
+            if (e.Error == null)
             {
-                ConcertInfoList.Items.Add(tempEvent);
+                XmlReader eventsReader = XmlReader.Create(e.Result);
+                this.events = this.parseEvents(eventsReader);
+                this.artists.Clear();
+                this.venues.Clear();
+                foreach (Event tempEvent in this.events)
+                {
+                    foreach (Artist tempArtist in tempEvent.Artists)
+                    {
+                        if (!this.artists.Contains<Artist>(tempArtist))
+                        {
+                            this.artists.Add(tempArtist);
+                        }
+                        
+                    }
+
+                    if (!this.venues.Contains<Venue>(tempEvent.Venue))
+                    {
+                        this.venues.Add(tempEvent.Venue);
+                    }
+
+                }
+
+                System.Diagnostics.Debug.WriteLine("Already contains " + this.events.Count);
+
+                if (this.events.Count <= 0)
+                {
+                    this.events = this.eventsStorageHelper.Load();
+                    this.artists = this.artistsStorageHelper.Load();
+                    this.venues = this.venuesStorageHelper.Load();
+                }
+                else
+                {
+                    this.eventsStorageHelper.Save(this.events);
+                    this.artistsStorageHelper.Save(this.artists);
+                    this.venuesStorageHelper.Save(this.venues);
+                }
             }
+            else
+            {
+                this.events = this.eventsStorageHelper.Load();
+                this.artists = this.artistsStorageHelper.Load();
+                this.venues = this.venuesStorageHelper.Load();
+            }
+
+            this.updateUi();
         }
        
-        private void ConcertInfoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void eventsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WebBrowserTask task = new WebBrowserTask();
-            task.URL = events[ConcertInfoList.SelectedIndex].Ticket_Url;
+            ListBox eventsListBox = (ListBox) this.FindName("eventsListBox");
+            task.URL = ((Event)eventsListBox.SelectedItem).EventUrl;
+            task.Show();
+        }
+
+        private void artistsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            WebBrowserTask task = new WebBrowserTask();
+            ListBox artistsListBox = (ListBox)this.FindName("artistsListBox");
+            task.URL = ((Artist)artistsListBox.SelectedItem).Url;
+            task.Show();
+        }
+
+        private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            WebBrowserTask task = new WebBrowserTask();
+            ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
+            task.URL = ((Venue)venueListBox.SelectedItem).Url;
             task.Show();
         }
 

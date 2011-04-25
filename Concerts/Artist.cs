@@ -2,7 +2,7 @@
 
 namespace Concerts
 {
-    public class Artist
+    public class Artist : IEquatable<Artist>, IComparable
     {
         public String Name { get; set; }
         public String Url { get; set; }
@@ -17,5 +17,23 @@ namespace Concerts
             this.Mbid = mbid;
             this.Upcoming_Events_Count = upcoming_events_count;
         }
+
+        int IComparable.CompareTo(object obj)
+        {
+            Artist a = (Artist)obj;
+            return String.Compare(this.Mbid, a.Mbid);
+        }
+
+        public bool Equals(Artist a)
+        {
+            if (a != null && this.Mbid == a.Mbid)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
 }

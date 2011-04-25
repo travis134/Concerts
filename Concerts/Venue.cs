@@ -2,7 +2,7 @@
 
 namespace Concerts
 {
-    public class Venue
+    public class Venue : IEquatable<Venue>, IComparable
     {
         public int Id { get; set; }
         public String Name { get; set; }
@@ -24,6 +24,35 @@ namespace Concerts
             this.Country = country;
             this.Latitude = latitude;
             this.Longitude = longitude;
+        }
+
+        int IComparable.CompareTo(object obj)
+        {
+            Venue v = (Venue)obj;
+            if (this.Id > v.Id)
+            {
+                return 1;
+            }
+            else if (this.Id < v.Id)
+            {
+                return -1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        public bool Equals(Venue v)
+        {
+            if (v != null && this.Id == v.Id)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }

@@ -19,10 +19,17 @@ namespace Concerts
     public class StorageHelper<T>
     {
         private String fileName;
+        private String lastModifiedFileName;
 
         public StorageHelper(String fileName)
         {
             this.fileName = fileName;
+        }
+
+        public StorageHelper(String fileName, String lastModifiedFileName)
+        {
+            this.fileName = fileName;
+            this.lastModifiedFileName = lastModifiedFileName;
         }
 
         public Boolean Exists()
@@ -73,6 +80,17 @@ namespace Concerts
                 XmlSerializer xs = new XmlSerializer(typeof(List<T>));
                 xs.Serialize(writer, genericList);
                 writer.Close();
+
+                if (this.lastModifiedFileName != null)
+                {
+                    if (!this.lastModifiedFileName.Equals(String.Empty))
+                    {
+                        IsolatedStorageFileStream lastModifiedFile = isoStorage.OpenFile(this.lastModifiedFileName, FileMode.Create);
+                        writer = new StreamWriter(lastModifiedFile);
+                        writer.WriteLine(DateTime.Now.ToString());
+                        writer.Close();
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -83,6 +101,40 @@ namespace Concerts
                 if (writer != null)
                     writer.Dispose();
             }
+        }
+
+        public Boolean IsStale(TimeSpan shelfLife)
+        {
+            Boolean result = true;
+            if (!this.lastModifiedFileName.Equals(String.Empty))
+            {
+                TextReader reader = null;
+                try
+                {
+                    IsolatedStorageFile isoStorage = IsolatedStorageFile.GetUserStoreForApplication();
+                    IsolatedStorageFileStream file = isoStorage.OpenFile(this.lastModifiedFileName, FileMode.Open);
+                    reader = new StreamReader(file);
+                    DateTime lastModifiedDate;
+                    if (DateTime.TryParse(reader.ReadLine(), out lastModifiedDate))
+                    {
+                        if ((DateTime.Now - lastModifiedDate) < shelfLife)
+                        {
+                            result = false;
+                        }
+                    }
+                    reader.Close();
+                }
+                catch (Exception e)
+                {
+                    System.Diagnostics.Debug.WriteLine(e.Message);
+                }
+                finally
+                {
+                    if (reader != null)
+                        reader.Dispose();
+                }
+            }
+            return result;
         }
     }
 }

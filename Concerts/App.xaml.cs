@@ -12,6 +12,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
+using Microsoft.Advertising.Mobile.UI;
 
 namespace Concerts
 {
@@ -28,6 +29,7 @@ namespace Concerts
         /// </summary>
         public App()
         {
+            AdControl.TestMode = false;
             // Global handler for uncaught exceptions. 
             UnhandledException += Application_UnhandledException;
 
