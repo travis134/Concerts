@@ -22,7 +22,7 @@
         </Grid.RowDefinitions>
         
         <!--Panorama control-->
-        <controls:Panorama Title="concerts" Name="mainView" Grid.Row="0">
+        <controls:Panorama Title="concerts" Name="mainView" Grid.Row="0" Foreground="White">
             <controls:Panorama.Background>
                 <ImageBrush ImageSource="PanoramaBackground.png"/>
             </controls:Panorama.Background>

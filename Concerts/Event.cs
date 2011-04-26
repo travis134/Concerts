@@ -26,6 +26,14 @@ namespace Concerts
             }
         }
         [XmlIgnoreAttribute]
+        public String ArtistNameUpper
+        {
+            get
+            {
+                return this.Artists.First<Artist>().Name.ToUpper();
+            }
+        }
+        [XmlIgnoreAttribute]
         public String EventUrl
         {
             get
@@ -64,6 +72,14 @@ namespace Concerts
                 }
 
                 return result;
+            }
+        }
+        [XmlIgnoreAttribute]
+        public String EventDateAndLocation
+        {
+            get
+            {
+                return this.EventDate + " at " + this.Venue.ShortName;
             }
         }
 

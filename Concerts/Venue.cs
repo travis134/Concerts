@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml.Serialization;
 
 namespace Concerts
 {
@@ -12,6 +13,38 @@ namespace Concerts
         public String Country { get; set; }
         public float Latitude { get; set; }
         public float Longitude { get; set; }
+
+        [XmlIgnoreAttribute]
+        public String CityAndRegion
+        {
+            get
+            {
+                return this.City + ", " + this.Region;
+            }
+        }
+
+        [XmlIgnoreAttribute]
+        public String ShortName
+        {
+            get
+            {
+                String result = this.Name;
+                if (result.Length > 30)
+                {
+                    result = result.Substring(0, 30) + "...";
+                }
+                return result;
+            }
+        }
+
+        [XmlIgnoreAttribute]
+        public String ShortNameUpper
+        {
+            get
+            {
+                return this.ShortName.ToUpper();
+            }
+        }
 
         public Venue() { }
         public Venue(int id, String name, String url, String city, String region, String country, float latitude, float longitude)

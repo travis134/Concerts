@@ -98,55 +98,49 @@ namespace Concerts
         public List<Event> parseEvents(XmlReader eventsReader)
         {
             List<Event> eventsResult = new List<Event>();
-            try
+            
+            while (eventsReader.Read())
             {
-                while (eventsReader.Read())
+                if (eventsReader.NodeType == XmlNodeType.Element)
                 {
-                    if (eventsReader.NodeType == XmlNodeType.Element)
+                    switch (eventsReader.Name)
                     {
-                        switch (eventsReader.Name)
-                        {
-                            case "artists":
-                                XmlReader artistsReader = eventsReader.ReadSubtree();
-                                eventsResult.Last<Event>().Artists = parseArtists(artistsReader);
-                                break;
-                            case "venue":
-                                XmlReader venueReader = eventsReader.ReadSubtree();
-                                eventsResult.Last<Event>().Venue = parseVenue(venueReader);
-                                break;
-                            case "events":
-                                break;
-                            case "event":
-                                eventsResult.Add(new Event());
-                                break;
-                            case "id":
-                                eventsResult.Last<Event>().Id = eventsReader.ReadElementContentAsInt();
-                                break;
-                            case "url":
-                                eventsResult.Last<Event>().Url = eventsReader.ReadElementContentAsString();
-                                break;
-                            case "datetime":
-                                eventsResult.Last<Event>().DateTime = eventsReader.ReadElementContentAsDateTime();
-                                break;
-                            case "ticket_url":
-                                eventsResult.Last<Event>().Ticket_Url = eventsReader.ReadElementContentAsString() + "?affil_code=concertswp7";
-                                break;
-                            case "status":
-                                eventsResult.Last<Event>().Status = eventsReader.ReadElementContentAsString();
-                                break;
-                            case "ticket_status":
-                                eventsResult.Last<Event>().Ticket_Status = eventsReader.ReadElementContentAsString();
-                                break;
-                            case "on_sale_datetime":
-                                eventsResult.Last<Event>().On_Sale_Date = ParseNullableDateTime(eventsReader.ReadInnerXml().ToString());
-                                break;
-                        }
+                        case "artists":
+                            XmlReader artistsReader = eventsReader.ReadSubtree();
+                            eventsResult.Last<Event>().Artists = parseArtists(artistsReader);
+                            break;
+                        case "venue":
+                            XmlReader venueReader = eventsReader.ReadSubtree();
+                            eventsResult.Last<Event>().Venue = parseVenue(venueReader);
+                            break;
+                        case "events":
+                            break;
+                        case "event":
+                            eventsResult.Add(new Event());
+                            break;
+                        case "id":
+                            eventsResult.Last<Event>().Id = eventsReader.ReadElementContentAsInt();
+                            break;
+                        case "url":
+                            eventsResult.Last<Event>().Url = eventsReader.ReadElementContentAsString();
+                            break;
+                        case "datetime":
+                            eventsResult.Last<Event>().DateTime = eventsReader.ReadElementContentAsDateTime();
+                            break;
+                        case "ticket_url":
+                            eventsResult.Last<Event>().Ticket_Url = eventsReader.ReadElementContentAsString() + "?affil_code=concertswp7";
+                            break;
+                        case "status":
+                            eventsResult.Last<Event>().Status = eventsReader.ReadElementContentAsString();
+                            break;
+                        case "ticket_status":
+                            eventsResult.Last<Event>().Ticket_Status = eventsReader.ReadElementContentAsString();
+                            break;
+                        case "on_sale_datetime":
+                            eventsResult.Last<Event>().On_Sale_Date = ParseNullableDateTime(eventsReader.ReadInnerXml().ToString());
+                            break;
                     }
                 }
-            }
-            catch (Exception e)
-            {
-
             }
             return eventsResult;
         }
@@ -154,83 +148,73 @@ namespace Concerts
         public List<Artist> parseArtists(XmlReader artistsReader)
         {
             List<Artist> artistsResults = new List<Artist>();
-            try
+            
+            while (artistsReader.Read())
             {
-                while (artistsReader.Read())
+                if (artistsReader.NodeType == XmlNodeType.Element)
                 {
-                    if (artistsReader.NodeType == XmlNodeType.Element)
+                    switch (artistsReader.Name)
                     {
-                        switch (artistsReader.Name)
-                        {
-                            case "artist":
-                                artistsResults.Add(new Artist());
-                                break;
-                            case "name":
-                                artistsResults.Last<Artist>().Name = artistsReader.ReadElementContentAsString();
-                                break;
-                            case "url":
-                                artistsResults.Last<Artist>().Url = artistsReader.ReadElementContentAsString();
-                                break;
-                            case "mbid":
-                                artistsResults.Last<Artist>().Mbid = artistsReader.ReadElementContentAsString();
-                                break;
-                            case "upcoming_events_count":
-                                artistsResults.Last<Artist>().Upcoming_Events_Count = artistsReader.ReadElementContentAsInt();
-                                break;
-                        }
+                        case "artist":
+                            artistsResults.Add(new Artist());
+                            break;
+                        case "name":
+                            artistsResults.Last<Artist>().Name = artistsReader.ReadElementContentAsString();
+                            break;
+                        case "url":
+                            artistsResults.Last<Artist>().Url = artistsReader.ReadElementContentAsString();
+                            break;
+                        case "mbid":
+                            artistsResults.Last<Artist>().Mbid = artistsReader.ReadElementContentAsString();
+                            break;
+                        case "upcoming_events_count":
+                            artistsResults.Last<Artist>().Upcoming_Events_Count = artistsReader.ReadElementContentAsInt();
+                            break;
                     }
                 }
-            }
-            catch (Exception e)
-            {
-
-            }
+            }   
+            
             return artistsResults;
         }
 
         public Venue parseVenue(XmlReader venueReader)
         {
             Venue venueResult = new Venue();
-            try
+           
+            while (venueReader.Read())
             {
-                while (venueReader.Read())
+                if (venueReader.NodeType == XmlNodeType.Element)
                 {
-                    if (venueReader.NodeType == XmlNodeType.Element)
+                    switch (venueReader.Name)
                     {
-                        switch (venueReader.Name)
-                        {
-                            case "id":
-                                venueResult.Id = venueReader.ReadElementContentAsInt();
-                                break;
-                            case "name":
-                                venueResult.Name = venueReader.ReadElementContentAsString();
-                                break;
-                            case "url":
-                                venueResult.Url = venueReader.ReadElementContentAsString();
-                                break;
-                            case "city":
-                                venueResult.City = venueReader.ReadElementContentAsString();
-                                break;
-                            case "region":
-                                venueResult.Region = venueReader.ReadElementContentAsString();
-                                break;
-                            case "country":
-                                venueResult.Country = venueReader.ReadElementContentAsString();
-                                break;
-                            case "latitude":
-                                venueResult.Latitude = venueReader.ReadElementContentAsFloat();
-                                break;
-                            case "longitude":
-                                venueResult.Longitude = venueReader.ReadElementContentAsFloat();
-                                break;
-                        }
+                        case "id":
+                            venueResult.Id = venueReader.ReadElementContentAsInt();
+                            break;
+                        case "name":
+                            venueResult.Name = venueReader.ReadElementContentAsString();
+                            break;
+                        case "url":
+                            venueResult.Url = venueReader.ReadElementContentAsString();
+                            break;
+                        case "city":
+                            venueResult.City = venueReader.ReadElementContentAsString();
+                            break;
+                        case "region":
+                            venueResult.Region = venueReader.ReadElementContentAsString();
+                            break;
+                        case "country":
+                            venueResult.Country = venueReader.ReadElementContentAsString();
+                            break;
+                        case "latitude":
+                            venueResult.Latitude = venueReader.ReadElementContentAsFloat();
+                            break;
+                        case "longitude":
+                            venueResult.Longitude = venueReader.ReadElementContentAsFloat();
+                            break;
                     }
                 }
             }
-            catch (Exception e)
-            {
-
-            }
+            
             return venueResult;
         }
 
@@ -239,12 +223,8 @@ namespace Concerts
             DataTemplate eventsListItemTemplate = (DataTemplate)XamlReader.Load(
                 "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
                 + "<StackPanel Orientation=\"Vertical\">"
-                + "<TextBlock Text=\"{Binding ArtistName}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
-                + "<StackPanel Orientation=\"Horizontal\">"
-                + "<TextBlock Text=\"{Binding EventDate}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "<TextBlock Text=\" at \" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "<TextBlock Text=\"{Binding Venue.Name}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "</StackPanel>"
+                + "<TextBlock Text=\"{Binding ArtistNameUpper}\" TextWrapping=\"Wrap\" FontSize=\"48\" FontWeight=\"Bold\" Foreground=\"White\"/>"
+                + "<TextBlock Text=\"{Binding EventDateAndLocation}\" TextWrapping=\"Wrap\" FontSize=\"22\" Foreground=\"#FF1BA1E2\"/>"
                 + "</StackPanel>"
                 + "</DataTemplate>");
 
@@ -259,7 +239,7 @@ namespace Concerts
 
             DataTemplate artistsListItemTemplate = (DataTemplate)XamlReader.Load(
                 "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
-                + "<TextBlock Text=\"{Binding Name}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
+                + "<TextBlock Text=\"{Binding NameUpper}\" TextWrapping=\"Wrap\" FontSize=\"48\" FontWeight=\"Bold\" Foreground=\"White\"/>"
                 + "</DataTemplate>");
 
             ListBox artistsListBox = new ListBox() { Name = "artistsListBox", ItemTemplate = artistsListItemTemplate };
@@ -274,12 +254,8 @@ namespace Concerts
             DataTemplate venuesListItemTemplate = (DataTemplate)XamlReader.Load(
                 "<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'>"
                 + "<StackPanel Orientation=\"Vertical\">"
-                + "<TextBlock Text=\"{Binding Name}\" TextWrapping=\"Wrap\" FontSize=\"48\"/>"
-                + "<StackPanel Orientation=\"Horizontal\">"
-                + "<TextBlock Text=\"{Binding City}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "<TextBlock Text=\", \" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "<TextBlock Text=\"{Binding Region}\" TextWrapping=\"Wrap\" FontSize=\"22\"/>"
-                + "</StackPanel>"
+                + "<TextBlock Text=\"{Binding ShortNameUpper}\" TextWrapping=\"Wrap\" FontSize=\"48\" FontWeight=\"Bold\" Foreground=\"White\"/>"
+                + "<TextBlock Text=\"{Binding CityAndRegion}\" TextWrapping=\"Wrap\" FontSize=\"22\" Foreground=\"#FFF09609\"/>"
                 + "</StackPanel>"
                 + "</DataTemplate>");
 
@@ -368,17 +344,19 @@ namespace Concerts
 
         private void artistsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            WebBrowserTask task = new WebBrowserTask();
+            
+            MarketplaceSearchTask marketSearch = new MarketplaceSearchTask();
+            marketSearch.ContentType = MarketplaceContentType.Music;
             ListBox artistsListBox = (ListBox)this.FindName("artistsListBox");
-            task.URL = ((Artist)artistsListBox.SelectedItem).Url;
-            task.Show();
+            marketSearch.SearchTerms = ((Artist)artistsListBox.SelectedItem).Name;
+            marketSearch.Show();
         }
 
         private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WebBrowserTask task = new WebBrowserTask();
             ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
-            task.URL = ((Venue)venueListBox.SelectedItem).Url;
+            task.URL = String.Format("http://maps.google.com/maps?ll={0},{1}",((Venue)venueListBox.SelectedItem).Latitude, ((Venue)venueListBox.SelectedItem).Longitude);
             task.Show();
         }
 

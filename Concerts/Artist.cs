@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Xml.Serialization;
 
 namespace Concerts
 {
@@ -8,6 +9,15 @@ namespace Concerts
         public String Url { get; set; }
         public String Mbid { get; set; }
         public int Upcoming_Events_Count { get; set; }
+
+        [XmlIgnoreAttribute]
+        public String NameUpper
+        {
+            get
+            {
+                return this.Name.ToUpper();
+            }
+        }
 
         public Artist() { }
         public Artist(String name, String url, String mbid, int upcoming_events_count)
