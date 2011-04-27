@@ -10,6 +10,7 @@ using System.Linq;
 using System.Device.Location;
 using System.Windows.Markup;
 using Microsoft.Advertising.Mobile.UI;
+using Microsoft.Phone.Shell;
 
 namespace Concerts
 {
@@ -22,7 +23,7 @@ namespace Concerts
         StorageHelper<Event> eventsStorageHelper;
         StorageHelper<Artist> artistsStorageHelper;
         StorageHelper<Venue> venuesStorageHelper;
-
+        PhoneApplicationService phoneAppService = PhoneApplicationService.Current;
 
         public MainPage()
         {
@@ -34,6 +35,51 @@ namespace Concerts
             mainView.Items.Add(artistsPage);
             mainView.Items.Add(venuesPage);
 
+            AdControl concertsAd = new AdControl() { ApplicationId = "33c7fa47-c859-47f1-8903-f745bf749ce0", AdUnitId = "10016302", Width = 300, Height = 50};
+            LayoutRoot.Children.Add(concertsAd);
+            Grid.SetRow(concertsAd, 1);
+
+            ApplicationBar = new ApplicationBar();
+            ApplicationBar.IsMenuEnabled = true;
+            ApplicationBar.IsVisible = true;
+            ApplicationBar.Opacity = 1.0;
+
+
+            ApplicationBarIconButton search = new ApplicationBarIconButton(new Uri("/Icons/appbar.feature.search.rest.png", UriKind.Relative));
+            search.Text = "search";
+            search.Click += new EventHandler(search_Click);
+
+            ApplicationBarIconButton refresh = new ApplicationBarIconButton(new Uri("/Icons/appbar.refresh.rest.png", UriKind.Relative));
+            refresh.Text = "refresh";
+            refresh.Click += new EventHandler(refresh_Click);
+
+            ApplicationBarIconButton settings = new ApplicationBarIconButton(new Uri("/Icons/appbar.feature.settings.rest.png", UriKind.Relative));
+            settings.Text = "settings";
+            settings.Click += new EventHandler(settings_Click);
+
+            ApplicationBar.Buttons.Add(refresh);
+            ApplicationBar.Buttons.Add(settings);
+            ApplicationBar.Buttons.Add(search);
+
+            this.Loaded += new RoutedEventHandler(MainPage_Loaded);
+        }
+
+        void search_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        void refresh_Click(object sender, EventArgs e)
+        {
+        }
+
+        void settings_Click(object sender, EventArgs e)
+        {
+            this.NavigationService.Navigate(new Uri("/Settings.xaml", UriKind.Relative));
+        }
+
+        private void MainPage_Loaded(object sender, RoutedEventArgs e)
+        {
             events = new List<Event>();
             artists = new List<Artist>();
             venues = new List<Venue>();
@@ -59,13 +105,6 @@ namespace Concerts
                 this.venues = this.venuesStorageHelper.Load();
                 this.updateUi();
             }
-
-            this.Loaded += new RoutedEventHandler(MainPage_Loaded);
-        }
-
-        private void MainPage_Loaded(object sender, RoutedEventArgs e)
-        {
-            
         }
 
         void watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
@@ -276,10 +315,6 @@ namespace Concerts
             eventsPage.Content = eventsListBox;
             artistsPage.Content = artistsListBox;
             venuesPage.Content = venuesListBox;
-
-            AdControl concertsAd = new AdControl() { ApplicationId = "33c7fa47-c859-47f1-8903-f745bf749ce0", AdUnitId = "10016302", Width = 300, Height = 50, Margin = new Thickness(10) };
-            LayoutRoot.Children.Add(concertsAd);
-            Grid.SetRow(concertsAd, 1);
         }
 
         void request_DownloadConcertInfo(object sender,
@@ -354,10 +389,14 @@ namespace Concerts
 
         private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
+            phoneAppService.State.Add(new KeyValuePair<string,object>("venue",((Venue)venueListBox.SelectedItem)));
+            this.NavigationService.Navigate(new Uri("/VenueView.xaml", UriKind.Relative));
+            /*
             WebBrowserTask task = new WebBrowserTask();
             ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
             task.URL = String.Format("http://maps.google.com/maps?ll={0},{1}",((Venue)venueListBox.SelectedItem).Latitude, ((Venue)venueListBox.SelectedItem).Longitude);
-            task.Show();
+            task.Show();*/
         }
 
         public static DateTime? ParseNullableDateTime(string s)
