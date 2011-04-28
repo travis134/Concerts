@@ -44,7 +44,7 @@ namespace Concerts
             isoStorage.DeleteFile(this.fileName);
         }
 
-        public List<T> Load()
+        public List<T> LoadAll()
         {
             List<T> genericList = new List<T>();
             TextReader reader = null;
@@ -69,7 +69,7 @@ namespace Concerts
             return genericList;
         }
 
-        public void Save(List<T> genericList)
+        public void SaveAll(List<T> genericList)
         {
             TextWriter writer = null;
             try
@@ -79,6 +79,65 @@ namespace Concerts
                 writer = new StreamWriter(file);
                 XmlSerializer xs = new XmlSerializer(typeof(List<T>));
                 xs.Serialize(writer, genericList);
+                writer.Close();
+
+                if (this.lastModifiedFileName != null)
+                {
+                    if (!this.lastModifiedFileName.Equals(String.Empty))
+                    {
+                        IsolatedStorageFileStream lastModifiedFile = isoStorage.OpenFile(this.lastModifiedFileName, FileMode.Create);
+                        writer = new StreamWriter(lastModifiedFile);
+                        writer.WriteLine(DateTime.Now.ToString());
+                        writer.Close();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+            }
+            finally
+            {
+                if (writer != null)
+                    writer.Dispose();
+            }
+        }
+
+        public T Load()
+        {
+            T genericObject = (T)new object();
+            TextReader reader = null;
+            try
+            {
+                IsolatedStorageFile isoStorage = IsolatedStorageFile.GetUserStoreForApplication();
+                IsolatedStorageFileStream file = isoStorage.OpenFile(this.fileName, FileMode.OpenOrCreate);
+                reader = new StreamReader(file);
+                XmlSerializer xs = new XmlSerializer(typeof(T));
+                genericObject = (T)xs.Deserialize(reader);
+                reader.Close();
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+            }
+            finally
+            {
+                if (reader != null)
+                    reader.Dispose();
+            }
+            return genericObject;
+        }
+
+        public void Save(T genericObject)
+        {
+            TextWriter writer = null;
+            try
+            {
+                IsolatedStorageFile isoStorage = IsolatedStorageFile.GetUserStoreForApplication();
+                IsolatedStorageFileStream file = isoStorage.OpenFile(this.fileName, FileMode.Create);
+                writer = new StreamWriter(file);
+                XmlSerializer xs = new XmlSerializer(typeof(T));
+                xs.Serialize(writer, genericObject);
                 writer.Close();
 
                 if (this.lastModifiedFileName != null)

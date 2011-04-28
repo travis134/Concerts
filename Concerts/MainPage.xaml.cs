@@ -24,6 +24,8 @@ namespace Concerts
         StorageHelper<Artist> artistsStorageHelper;
         StorageHelper<Venue> venuesStorageHelper;
         PhoneApplicationService phoneAppService = PhoneApplicationService.Current;
+        SettingsHelper settingsHelper;
+        StorageHelper<SettingsHelper> settingsStorageHelper;
 
         public MainPage()
         {
@@ -44,6 +46,39 @@ namespace Concerts
             ApplicationBar.IsVisible = true;
             ApplicationBar.Opacity = 1.0;
 
+            this.settingsHelper = new SettingsHelper();
+            this.settingsStorageHelper = new StorageHelper<SettingsHelper>("Settings.xml");
+            if (this.settingsStorageHelper.Exists())
+            {
+                this.settingsHelper = this.settingsStorageHelper.Load();
+            }
+            this.phoneAppService.State.Add(new KeyValuePair<string, object>("settings", settingsHelper));
+
+            events = new List<Event>();
+            artists = new List<Artist>();
+            venues = new List<Venue>();
+
+            eventsStorageHelper = new StorageHelper<Event>("Events.xml", "Stale.txt");
+            artistsStorageHelper = new StorageHelper<Artist>("Artists.xml");
+            venuesStorageHelper = new StorageHelper<Venue>("Venues.xml");
+
+            if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
+            {
+                if (watcher == null)
+                {
+                    watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.High);
+                    watcher.MovementThreshold = 20;
+                    watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
+                }
+                watcher.Start();
+            }
+            else
+            {
+                this.events = this.eventsStorageHelper.LoadAll();
+                this.artists = this.artistsStorageHelper.LoadAll();
+                this.venues = this.venuesStorageHelper.LoadAll();
+                this.updateUi();
+            }
 
             ApplicationBarIconButton search = new ApplicationBarIconButton(new Uri("/Icons/appbar.feature.search.rest.png", UriKind.Relative));
             search.Text = "search";
@@ -80,14 +115,6 @@ namespace Concerts
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            events = new List<Event>();
-            artists = new List<Artist>();
-            venues = new List<Venue>();
-
-            eventsStorageHelper = new StorageHelper<Event>("Events.xml", "Stale.txt");
-            artistsStorageHelper = new StorageHelper<Artist>("Artists.xml");
-            venuesStorageHelper = new StorageHelper<Venue>("Venues.xml");
-
             if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
             {
                 if (watcher == null)
@@ -97,13 +124,6 @@ namespace Concerts
                     watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
                 }
                 watcher.Start();
-            }
-            else
-            {
-                this.events = this.eventsStorageHelper.Load();
-                this.artists = this.artistsStorageHelper.Load();
-                this.venues = this.venuesStorageHelper.Load();
-                this.updateUi();
             }
         }
 
@@ -348,22 +368,22 @@ namespace Concerts
 
                 if (this.events.Count <= 0)
                 {
-                    this.events = this.eventsStorageHelper.Load();
-                    this.artists = this.artistsStorageHelper.Load();
-                    this.venues = this.venuesStorageHelper.Load();
+                    this.events = this.eventsStorageHelper.LoadAll();
+                    this.artists = this.artistsStorageHelper.LoadAll();
+                    this.venues = this.venuesStorageHelper.LoadAll();
                 }
                 else
                 {
-                    this.eventsStorageHelper.Save(this.events);
-                    this.artistsStorageHelper.Save(this.artists);
-                    this.venuesStorageHelper.Save(this.venues);
+                    this.eventsStorageHelper.SaveAll(this.events);
+                    this.artistsStorageHelper.SaveAll(this.artists);
+                    this.venuesStorageHelper.SaveAll(this.venues);
                 }
             }
             else
             {
-                this.events = this.eventsStorageHelper.Load();
-                this.artists = this.artistsStorageHelper.Load();
-                this.venues = this.venuesStorageHelper.Load();
+                this.events = this.eventsStorageHelper.LoadAll();
+                this.artists = this.artistsStorageHelper.LoadAll();
+                this.venues = this.venuesStorageHelper.LoadAll();
             }
 
             this.updateUi();
@@ -372,8 +392,7 @@ namespace Concerts
         private void eventsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             WebBrowserTask task = new WebBrowserTask();
-            ListBox eventsListBox = (ListBox) this.FindName("eventsListBox");
-            task.URL = ((Event)eventsListBox.SelectedItem).EventUrl;
+            task.URL = ((Event)((ListBox)sender).SelectedItem).EventUrl;
             task.Show();
         }
 
@@ -382,15 +401,13 @@ namespace Concerts
             
             MarketplaceSearchTask marketSearch = new MarketplaceSearchTask();
             marketSearch.ContentType = MarketplaceContentType.Music;
-            ListBox artistsListBox = (ListBox)this.FindName("artistsListBox");
-            marketSearch.SearchTerms = ((Artist)artistsListBox.SelectedItem).Name;
+            marketSearch.SearchTerms = ((Artist)((ListBox)sender).SelectedItem).Name;
             marketSearch.Show();
         }
 
         private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
-            phoneAppService.State.Add(new KeyValuePair<string,object>("venue",((Venue)venueListBox.SelectedItem)));
+            ((SettingsHelper)phoneAppService.State["settings"]).objectSetting("venue", ((Venue)((ListBox)sender).SelectedItem));
             this.NavigationService.Navigate(new Uri("/VenueView.xaml", UriKind.Relative));
             /*
             WebBrowserTask task = new WebBrowserTask();
