@@ -12,6 +12,7 @@ using System.Windows.Shapes;
 using Microsoft.Phone.Controls;
 using System.Windows.Markup;
 using Microsoft.Phone.Shell;
+using System.IO.IsolatedStorage;
 
 namespace Concerts
 {
@@ -168,25 +169,24 @@ namespace Concerts
         protected override void OnNavigatedFrom(System.Windows.Navigation.NavigationEventArgs e)
         {
             ToggleSwitch tempToggleSwitch = (ToggleSwitch)this.FindName("EnableGPSToggleSwitch");
-            if (phoneAppService.State.ContainsKey("enableGPS"))
+            if (IsolatedStorageSettings.ApplicationSettings.Contains("enableGPS"))
             {
-                phoneAppService.State["enableGPS"] = tempToggleSwitch.IsChecked;
+                IsolatedStorageSettings.ApplicationSettings["enableGPS"] = tempToggleSwitch.IsChecked;
             }
             else
             {
-                phoneAppService.State.Add(new KeyValuePair<string, object>("enableGPS", tempToggleSwitch.IsChecked));
+                IsolatedStorageSettings.ApplicationSettings.Add("enableGPS", tempToggleSwitch.IsChecked);
             }
 
             ListPicker tempListPicker = (ListPicker)this.FindName("DefaultLocationListPicker");
-            if (phoneAppService.State.ContainsKey("defaultLocation"))
+            if (IsolatedStorageSettings.ApplicationSettings.Contains("defaultLocation"))
             {
-                phoneAppService.State["defaultLocation"] = tempListPicker.SelectedItem;
+                IsolatedStorageSettings.ApplicationSettings["defaultLocation"] = tempListPicker.SelectedItem;
             }
             else
             {
-                phoneAppService.State.Add(new KeyValuePair<string, object>("defaultLocation", tempListPicker.SelectedItem));
+                IsolatedStorageSettings.ApplicationSettings.Add("defaultLocation", tempListPicker.SelectedItem);
             }
-
 
             base.OnNavigatedFrom(e);
 
@@ -196,14 +196,14 @@ namespace Concerts
         {
             ListPicker tempListPicker = (ListPicker) this.FindName("DefaultLocationListPicker");
             object tempLocation;
-            if (phoneAppService.State.TryGetValue("defaultLocation", out tempLocation))
+            if (IsolatedStorageSettings.ApplicationSettings.TryGetValue("defaultLocation", out tempLocation))
             {
                 tempListPicker.SelectedItem = (String)tempLocation;
             }
 
             ToggleSwitch tempToggleSwitch = (ToggleSwitch)this.FindName("EnableGPSToggleSwitch");
             object tempEnableGPS;
-            if (phoneAppService.State.TryGetValue("enableGPS", out tempEnableGPS))
+            if (IsolatedStorageSettings.ApplicationSettings.TryGetValue("enableGPS", out tempEnableGPS))
             {
                 tempToggleSwitch.IsChecked = (Boolean)tempEnableGPS;
             }

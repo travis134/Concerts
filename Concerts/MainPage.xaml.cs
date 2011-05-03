@@ -11,6 +11,7 @@ using System.Device.Location;
 using System.Windows.Markup;
 using Microsoft.Advertising.Mobile.UI;
 using Microsoft.Phone.Shell;
+using System.IO.IsolatedStorage;
 
 namespace Concerts
 {
@@ -52,24 +53,6 @@ namespace Concerts
             artistsStorageHelper = new StorageHelper<Artist>("Artists.xml");
             venuesStorageHelper = new StorageHelper<Venue>("Venues.xml");
 
-            if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
-            {
-                if (watcher == null)
-                {
-                    watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.High);
-                    watcher.MovementThreshold = 20;
-                    watcher.StatusChanged += new EventHandler<GeoPositionStatusChangedEventArgs>(watcher_StatusChanged);
-                }
-                watcher.Start();
-            }
-            else
-            {
-                this.events = this.eventsStorageHelper.LoadAll();
-                this.artists = this.artistsStorageHelper.LoadAll();
-                this.venues = this.venuesStorageHelper.LoadAll();
-                this.updateUi();
-            }
-
             ApplicationBarIconButton search = new ApplicationBarIconButton(new Uri("/Icons/appbar.feature.search.rest.png", UriKind.Relative));
             search.Text = "search";
             search.Click += new EventHandler(search_Click);
@@ -96,6 +79,7 @@ namespace Concerts
 
         void refresh_Click(object sender, EventArgs e)
         {
+            refreshInfo();
         }
 
         void settings_Click(object sender, EventArgs e)
@@ -105,7 +89,25 @@ namespace Concerts
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
+
             if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
+            {
+                refreshInfo();
+            }
+            else
+            {
+                this.events = this.eventsStorageHelper.LoadAll();
+                this.artists = this.artistsStorageHelper.LoadAll();
+                this.venues = this.venuesStorageHelper.LoadAll();
+                this.updateUi();
+            }
+        }
+
+        private void refreshInfo()
+        {
+            object tempGPS;
+            IsolatedStorageSettings.ApplicationSettings.TryGetValue("enableGPS", out tempGPS);
+            if ((Boolean)tempGPS)
             {
                 if (watcher == null)
                 {
@@ -115,12 +117,29 @@ namespace Concerts
                 }
                 watcher.Start();
             }
+            else
+            {
+                object tempDefaultLocation;
+                IsolatedStorageSettings.ApplicationSettings.TryGetValue("defaultLocation", out tempDefaultLocation);
+                fetchInfo((String)tempDefaultLocation);
+            }
+        }
+
+        private void fetchInfo(String location)
+        {
+            if (String.IsNullOrEmpty(location))
+            {
+                location = "Tempe,AZ";
+            }
+            String url = "http://api.bandsintown.com/events/search.xml?per_page=20&location=" + location + "&app_id=concerts_wp7";
+            WebClient eventsClient = new WebClient();
+            eventsClient.OpenReadAsync(new Uri(url));
+            eventsClient.OpenReadCompleted += new OpenReadCompletedEventHandler(request_DownloadConcertInfo);
         }
 
         void watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
-            Boolean deviceReady = false;
-            String url = "http://api.bandsintown.com/events/search.xml?per_page=20&location={0}&app_id=concerts_wp7";
+            String location = null;
             switch (e.Status)
             {
                 case GeoPositionStatus.Disabled:
@@ -130,18 +149,10 @@ namespace Concerts
                 case GeoPositionStatus.NoData:
                     break;
                 case GeoPositionStatus.Ready:
-                    deviceReady = true;
-                    url = String.Format(url, watcher.Position.Location.Latitude.ToString() + "," + watcher.Position.Location.Longitude.ToString());
+                    location = watcher.Position.Location.Latitude.ToString() + "," + watcher.Position.Location.Longitude.ToString();
                     break;
             }
-
-            if (!deviceReady)
-            {
-                url = String.Format(url, "Tempe,AZ");
-            }
-            WebClient eventsClient = new WebClient();
-            eventsClient.OpenReadAsync(new Uri(url));
-            eventsClient.OpenReadCompleted += new OpenReadCompletedEventHandler(request_DownloadConcertInfo);
+            fetchInfo(location);
         }
 
         public List<Event> parseEvents(XmlReader eventsReader)
