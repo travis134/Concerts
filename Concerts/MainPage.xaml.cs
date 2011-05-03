@@ -107,7 +107,7 @@ namespace Concerts
         {
             object tempGPS;
             IsolatedStorageSettings.ApplicationSettings.TryGetValue("enableGPS", out tempGPS);
-            if ((Boolean)tempGPS)
+            if (tempGPS != null && (Boolean)tempGPS)
             {
                 if (watcher == null)
                 {
