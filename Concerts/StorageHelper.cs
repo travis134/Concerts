@@ -105,7 +105,7 @@ namespace Concerts
 
         public T Load()
         {
-            T genericObject = (T)new object();
+            T genericObject = default(T);
             TextReader reader = null;
             try
             {

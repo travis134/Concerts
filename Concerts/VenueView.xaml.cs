@@ -24,7 +24,7 @@ namespace Concerts
         {
             base.OnNavigatedTo(e);
             object tempVenue;
-            ((SettingsHelper)phoneAppService.State["settings"]).objectSetting("venue", out tempVenue);
+            phoneAppService.State.TryGetValue("venue", out tempVenue);
             this.venue = (Venue)tempVenue;
             Map venueMap = new Map() { Center = new System.Device.Location.GeoCoordinate(venue.Latitude, venue.Longitude)};
             LayoutRoot.Children.Add(venueMap);

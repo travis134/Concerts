@@ -13,18 +13,18 @@ using Microsoft.Phone.Controls;
 using System.Windows.Markup;
 using Microsoft.Phone.Shell;
 
-namespace Event
+namespace Concerts
 {
-    public partial class SettingsHelper : PhoneApplicationPage
+    public partial class SettingsPage : PhoneApplicationPage
     {
         List<String> cities;
         PhoneApplicationService phoneAppService = PhoneApplicationService.Current;
 
-        public SettingsHelper()
+        public SettingsPage()
         {
             InitializeComponent();
 
-            ToggleSwitch toggleGps = new ToggleSwitch() { Header = "Enable GPS?", Foreground = new SolidColorBrush(Colors.White) };
+            ToggleSwitch toggleGps = new ToggleSwitch() { Name="EnableGPSToggleSwitch", Header = "Enable GPS?", Foreground = new SolidColorBrush(Colors.White) };
             ContentPanel.Children.Add(toggleGps);
 
             #region cities
@@ -158,17 +158,56 @@ namespace Event
             };
             #endregion cities
             DataTemplate locationsTemplate = (DataTemplate)XamlReader.Load("<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'><TextBlock Text=\"{Binding}\" FontSize=\"52\"/></DataTemplate>");
-            ListPicker defaultLocation = new ListPicker() { Header = "Default Location", Foreground = new SolidColorBrush(Colors.White), FullModeItemTemplate = locationsTemplate };
-            defaultLocation.SelectionChanged += new SelectionChangedEventHandler(locationChanged);
+            ListPicker defaultLocation = new ListPicker() { Name = "DefaultLocationListPicker", Header = "Default Location", Foreground = new SolidColorBrush(Colors.White), FullModeItemTemplate = locationsTemplate };
             defaultLocation.ItemsSource = cities;
             ContentPanel.Children.Add(defaultLocation);
 
 
         }
 
-        private void locationChanged(object sender, SelectionChangedEventArgs e)
+        protected override void OnNavigatedFrom(System.Windows.Navigation.NavigationEventArgs e)
         {
-            phoneAppService.State.Add(new KeyValuePair<string, object>("defaultLocation", ((ListPicker)sender).SelectedItem.ToString()));
+            ToggleSwitch tempToggleSwitch = (ToggleSwitch)this.FindName("EnableGPSToggleSwitch");
+            if (phoneAppService.State.ContainsKey("enableGPS"))
+            {
+                phoneAppService.State["enableGPS"] = tempToggleSwitch.IsChecked;
+            }
+            else
+            {
+                phoneAppService.State.Add(new KeyValuePair<string, object>("enableGPS", tempToggleSwitch.IsChecked));
+            }
+
+            ListPicker tempListPicker = (ListPicker)this.FindName("DefaultLocationListPicker");
+            if (phoneAppService.State.ContainsKey("defaultLocation"))
+            {
+                phoneAppService.State["defaultLocation"] = tempListPicker.SelectedItem;
+            }
+            else
+            {
+                phoneAppService.State.Add(new KeyValuePair<string, object>("defaultLocation", tempListPicker.SelectedItem));
+            }
+
+
+            base.OnNavigatedFrom(e);
+
+        }
+
+        protected override void OnNavigatedTo(System.Windows.Navigation.NavigationEventArgs e)
+        {
+            ListPicker tempListPicker = (ListPicker) this.FindName("DefaultLocationListPicker");
+            object tempLocation;
+            if (phoneAppService.State.TryGetValue("defaultLocation", out tempLocation))
+            {
+                tempListPicker.SelectedItem = (String)tempLocation;
+            }
+
+            ToggleSwitch tempToggleSwitch = (ToggleSwitch)this.FindName("EnableGPSToggleSwitch");
+            object tempEnableGPS;
+            if (phoneAppService.State.TryGetValue("enableGPS", out tempEnableGPS))
+            {
+                tempToggleSwitch.IsChecked = (Boolean)tempEnableGPS;
+            }
+            base.OnNavigatedTo(e);
         }
 
 

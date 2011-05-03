@@ -24,8 +24,6 @@ namespace Concerts
         StorageHelper<Artist> artistsStorageHelper;
         StorageHelper<Venue> venuesStorageHelper;
         PhoneApplicationService phoneAppService = PhoneApplicationService.Current;
-        SettingsHelper settingsHelper;
-        StorageHelper<SettingsHelper> settingsStorageHelper;
 
         public MainPage()
         {
@@ -45,14 +43,6 @@ namespace Concerts
             ApplicationBar.IsMenuEnabled = true;
             ApplicationBar.IsVisible = true;
             ApplicationBar.Opacity = 1.0;
-
-            this.settingsHelper = new SettingsHelper();
-            this.settingsStorageHelper = new StorageHelper<SettingsHelper>("Settings.xml");
-            if (this.settingsStorageHelper.Exists())
-            {
-                this.settingsHelper = this.settingsStorageHelper.Load();
-            }
-            this.phoneAppService.State.Add(new KeyValuePair<string, object>("settings", settingsHelper));
 
             events = new List<Event>();
             artists = new List<Artist>();
@@ -110,7 +100,7 @@ namespace Concerts
 
         void settings_Click(object sender, EventArgs e)
         {
-            this.NavigationService.Navigate(new Uri("/Settings.xaml", UriKind.Relative));
+            this.NavigationService.Navigate(new Uri("/SettingsPage.xaml", UriKind.Relative));
         }
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
@@ -407,13 +397,15 @@ namespace Concerts
 
         private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ((SettingsHelper)phoneAppService.State["settings"]).objectSetting("venue", ((Venue)((ListBox)sender).SelectedItem));
+            if (phoneAppService.State.ContainsKey("venue"))
+            {
+                phoneAppService.State["venue"] = ((Venue)((ListBox)sender).SelectedItem);
+            }
+            else
+            {
+                phoneAppService.State.Add(new KeyValuePair<string, object>("venue", ((Venue)((ListBox)sender).SelectedItem)));
+            }
             this.NavigationService.Navigate(new Uri("/VenueView.xaml", UriKind.Relative));
-            /*
-            WebBrowserTask task = new WebBrowserTask();
-            ListBox venueListBox = (ListBox)this.FindName("venuesListBox");
-            task.URL = String.Format("http://maps.google.com/maps?ll={0},{1}",((Venue)venueListBox.SelectedItem).Latitude, ((Venue)venueListBox.SelectedItem).Longitude);
-            task.Show();*/
         }
 
         public static DateTime? ParseNullableDateTime(string s)
