@@ -17,6 +17,8 @@ namespace Concerts
 {
     public partial class MainPage : PhoneApplicationPage
     {
+        Boolean firstRun;
+
         List<Event> events;
         List<Artist> artists;
         List<Venue> venues;
@@ -28,6 +30,7 @@ namespace Concerts
 
         public MainPage()
         {
+
             InitializeComponent();
             PanoramaItem eventsPage = new PanoramaItem() { Name = "eventsPage", Header = "Upcoming" };
             PanoramaItem artistsPage = new PanoramaItem() { Name = "artistsPage", Header = "Artists" };
@@ -36,7 +39,7 @@ namespace Concerts
             mainView.Items.Add(artistsPage);
             mainView.Items.Add(venuesPage);
 
-            AdControl concertsAd = new AdControl() { ApplicationId = "33c7fa47-c859-47f1-8903-f745bf749ce0", AdUnitId = "10016302", Width = 300, Height = 50};
+            AdControl concertsAd = new AdControl() { ApplicationId = "33c7fa47-c859-47f1-8903-f745bf749ce0", AdUnitId = "10016302", Width = 300, Height = 50, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White), Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black) };
             LayoutRoot.Children.Add(concertsAd);
             Grid.SetRow(concertsAd, 1);
 
@@ -53,10 +56,6 @@ namespace Concerts
             artistsStorageHelper = new StorageHelper<Artist>("Artists.xml");
             venuesStorageHelper = new StorageHelper<Venue>("Venues.xml");
 
-            ApplicationBarIconButton search = new ApplicationBarIconButton(new Uri("/Icons/appbar.feature.search.rest.png", UriKind.Relative));
-            search.Text = "search";
-            search.Click += new EventHandler(search_Click);
-
             ApplicationBarIconButton refresh = new ApplicationBarIconButton(new Uri("/Icons/appbar.refresh.rest.png", UriKind.Relative));
             refresh.Text = "refresh";
             refresh.Click += new EventHandler(refresh_Click);
@@ -67,14 +66,11 @@ namespace Concerts
 
             ApplicationBar.Buttons.Add(refresh);
             ApplicationBar.Buttons.Add(settings);
-            ApplicationBar.Buttons.Add(search);
+
+            ApplicationBar.BackgroundColor = System.Windows.Media.Colors.Black;
+            ApplicationBar.ForegroundColor = System.Windows.Media.Colors.White;
 
             this.Loaded += new RoutedEventHandler(MainPage_Loaded);
-        }
-
-        void search_Click(object sender, EventArgs e)
-        {
-
         }
 
         void refresh_Click(object sender, EventArgs e)
@@ -89,6 +85,23 @@ namespace Concerts
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
+            object tempFirstRun;
+
+            if (IsolatedStorageSettings.ApplicationSettings.TryGetValue("firstRun", out tempFirstRun))
+            {
+                IsolatedStorageSettings.ApplicationSettings["firstRun"] = false;
+                firstRun = (Boolean)tempFirstRun;
+            }
+            else
+            {
+                IsolatedStorageSettings.ApplicationSettings.Add("firstRun", false);
+                firstRun = true;
+            }
+
+            if (firstRun)
+            {
+                this.NavigationService.Navigate(new Uri("/About.xaml", UriKind.Relative));
+            }
 
             if (eventsStorageHelper.IsStale(new TimeSpan(4, 0, 0)))
             {
@@ -408,15 +421,9 @@ namespace Concerts
 
         private void venuesListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (phoneAppService.State.ContainsKey("venue"))
-            {
-                phoneAppService.State["venue"] = ((Venue)((ListBox)sender).SelectedItem);
-            }
-            else
-            {
-                phoneAppService.State.Add(new KeyValuePair<string, object>("venue", ((Venue)((ListBox)sender).SelectedItem)));
-            }
-            this.NavigationService.Navigate(new Uri("/VenueView.xaml", UriKind.Relative));
+            WebBrowserTask task = new WebBrowserTask();
+            task.URL = String.Format("http://maps.google.com/maps?ll={0},{1}", ((Venue)((ListBox)sender).SelectedItem).Latitude, ((Venue)((ListBox)sender).SelectedItem).Longitude);
+            task.Show();
         }
 
         public static DateTime? ParseNullableDateTime(string s)

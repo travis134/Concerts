@@ -1,5 +1,5 @@
 ﻿<phone:PhoneApplicationPage 
-    x:Class="Concerts.VenueView"
+    x:Class="Concerts.About"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
@@ -23,13 +23,29 @@
         <!--TitlePanel contains the name of the application and page title-->
         <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28">
             <TextBlock x:Name="ApplicationTitle" Text="Concerts" Style="{StaticResource PhoneTextNormalStyle}"/>
-            <TextBlock x:Name="PageTitle" Text="Venue" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
+            <TextBlock x:Name="PageTitle" Text="About" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
         </StackPanel>
-        
-        
 
         <!--ContentPanel - place additional content here-->
-        <Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0"></Grid>
+        <Grid x:Name="ContentPanel" Grid.Row="1" Margin="12,0,12,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <ScrollViewer Grid.Row="0">
+                <Grid x:Name="ContentPanel2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="100"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" TextWrapping="Wrap" x:Name="ApplicationAbout" Text="Thank you for downloading Concerts. This applications was designed to provide you quick and easy access to several upcoming concerts near you. By default, the GPS functionality of this app has been disabled. You can enable it easily by toggling it from within the app settings. Your GPS is only used to fetch concert information from the BandsInTown API. By using this app and enabling the GPS functionality, you agree that the developer of this app is in no way responsible or liable for anything. If you disagree, please exit and uninstall this app immediately." Style="{StaticResource PhoneTextNormalStyle}"/>
+                    <Button Grid.Row="1" Content="OK" Click="Button_Click"></Button>
+                </Grid>
+            </ScrollViewer>
+            
+
+        </Grid>
     </Grid>
  
     <!--Sample code showing usage of ApplicationBar-->

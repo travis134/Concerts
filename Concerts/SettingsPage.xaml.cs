@@ -25,7 +25,7 @@ namespace Concerts
         {
             InitializeComponent();
 
-            ToggleSwitch toggleGps = new ToggleSwitch() { Name="EnableGPSToggleSwitch", Header = "Enable GPS?", Foreground = new SolidColorBrush(Colors.White) };
+            ToggleSwitch toggleGps = new ToggleSwitch() { Name = "EnableGPSToggleSwitch", Header = "Enable GPS?"};
             ContentPanel.Children.Add(toggleGps);
 
             #region cities
@@ -159,11 +159,20 @@ namespace Concerts
             };
             #endregion cities
             DataTemplate locationsTemplate = (DataTemplate)XamlReader.Load("<DataTemplate xmlns='http://schemas.microsoft.com/client/2007'><TextBlock Text=\"{Binding}\" FontSize=\"52\"/></DataTemplate>");
-            ListPicker defaultLocation = new ListPicker() { Name = "DefaultLocationListPicker", Header = "Default Location", Foreground = new SolidColorBrush(Colors.White), FullModeItemTemplate = locationsTemplate };
+            ListPicker defaultLocation = new ListPicker() { Name = "DefaultLocationListPicker", Header = "Default Location", FullModeItemTemplate = locationsTemplate };
             defaultLocation.ItemsSource = cities;
             ContentPanel.Children.Add(defaultLocation);
 
+            Button aboutButton = new Button() { Name = "AboutButton", Content = "About"};
+            aboutButton.Click += Button_Click;
+            ContentPanel.Children.Add(aboutButton);
 
+
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            this.NavigationService.Navigate(new Uri("/About.xaml", UriKind.Relative));
         }
 
         protected override void OnNavigatedFrom(System.Windows.Navigation.NavigationEventArgs e)
@@ -184,7 +193,7 @@ namespace Concerts
                 IsolatedStorageSettings.ApplicationSettings["defaultLocation"] = tempListPicker.SelectedItem;
             }
             else
-            {
+            { 
                 IsolatedStorageSettings.ApplicationSettings.Add("defaultLocation", tempListPicker.SelectedItem);
             }
 
